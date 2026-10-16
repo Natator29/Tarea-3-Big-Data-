@@ -1,0 +1,208 @@
+# Análisis 2 — Destrucción de infraestructura de producción de drogas
+
+**Dataset:** Destrucción de infraestructura de producción de drogas ilícitas
+**Registro:** 37.987 reportes × 7 columnas · UTF-8 · delimitador coma
+**Cobertura:** 2010 – 2026 (17 años)
+**Tecnología:** Apache Spark 3.5.1 · Python 3.10.12 · Java 17
+
+---
+
+## Pregunta
+
+> ¿Cuáles son los departamentos de Colombia que registran la mayor cantidad de
+> destrucciones de infraestructura de producción de drogas ilícitas?
+
+## Respuesta
+
+```
+================================================================================
+1. PUTUMAYO                    14,913 unidades   (21,08 %)
+2. NARIÑO                      14,676 unidades   (20,75 %)
+3. NORTE DE SANTANDER           8,507 unidades   (12,03 %)
+================================================================================
+```
+
+Total nacional: **70.732 unidades**. Los tres primeros concentran el **53,86 %**.
+
+---
+
+## Esquema del dataset
+
+```
+root
+ |-- FECHA HECHO: string      ("2026 Aug 31 12:00:00 AM")
+ |-- COD_DEPTO: string
+ |-- DEPARTAMENTO: string
+ |-- COD_MUNI: string
+ |-- MUNICIPIO: string
+ |-- CANTIDAD: long           <-- columna clave
+ |-- UNIDAD DE MEDIDA: string
+```
+
+### Lo más importante de este dataset
+
+**Trae la columna `CANTIDAD`.** Cada fila es un reporte **ya agregado** por
+municipio y fecha, no un evento individual. Por eso hay que **sumar**, no contar
+filas.
+
+La diferencia no es cosmetics:
+
+| Método | Resultado para Putumayo |
+|---|---:|
+| Contar filas | 6.889 |
+| **Sumar `CANTIDAD`** | **14.913** |
+
+Contar filas habría subestimado el phenomenon en más de la mitad.
+
+**Verificación:** la columna `UNIDAD DE MEDIDA` tiene un solo valor, `UNIDAD`
+(37.987 de 37.987 registros). Al ser una única unidad, sumar es aritméticamente
+válido.
+
+---
+
+## Resultados
+
+### Ranking completo
+
+| # | Departamento | Unidades | % | Reportes | Municipios |
+|---|---|---:|---:|---:|---:|
+| 1 | **Putumayo** | 14.913 | 21,08 | 6.889 | 10 |
+| 2 | **Nariño** | 14.676 | 20,75 | 5.716 | 48 |
+| 3 | **Norte de Santander** | 8.507 | 12,03 | 5.509 | 34 |
+| 4 | Cauca | 5.397 | 7,63 | 3.776 | 36 |
+| 5 | Antioquia | 4.686 | 6,63 | 3.289 | 94 |
+| 6 | Guaviare | 4.546 | 6,43 | 1.984 | 4 |
+| 7 | Chocó | 3.433 | 4,85 | 1.741 | 30 |
+| 8 | Caquetá | 3.340 | 4,72 | 1.984 | 21 |
+| 9 | Meta | 3.161 | 4,47 | 1.974 | 27 |
+| 10 | Bolívar | 2.619 | 3,70 | 1.259 | 24 |
+| 11 | Vichada | 1.509 | 2,13 | 839 | 6 |
+| 12 | Córdoba | 1.212 | 1,71 | 836 | 29 |
+| 13 | Valle del Cauca | 864 | 1,22 | 658 | 15 |
+
+### Serie histórica (nacional)
+
+| Año | Unidades | Año | Unidades |
+|---|---:|---|---:|
+| 2010 | 2.589 | 2019 | 5.494 |
+| 2011 | 2.278 | 2020 | 5.233 |
+| 2012 | 2.440 | 2021 | 5.779 |
+| 2013 | 2.338 | 2022 | 4.719 |
+| 2014 | 2.356 | 2023 | 5.237 |
+| 2015 | 3.842 | 2024 | 5.261 |
+| 2016 | 4.835 | 2025 | 5.444 |
+| 2017 | 4.272 | 2026 | 4.012 |
+| 2018 | 4.578 | | |
+
+---
+
+## Hallazgos
+
+### 1. Los tres primeros están en el mismo corredor geográfico
+
+Putumayo, Nariño y Norte de Santander son los tres departamentos de la
+frontera con Ecuador, y Putumayo junto con el sur de Nariño forman la principal
+zona de cultivo de cocaina del país.
+
+El 53,86 % del total nacional se concentra en tres departamentos contiguos.
+
+### 2. Putumayo y Nariño casi empatan
+
+14.913 contra 14.676: **237 unidades de diferencia (1,6 %)**. Cualquier
+afirmación sobre cuál es "el primero" debe reconocer ese margen. No es una
+diferencia estadísticamente sólida.
+
+### 3. Guaviare y Vichada: mucho volumen en pocos municipios
+
+Guaviare registra 4.546 unidades en solo **4 municipios** (1.984 reportes), y
+Vichada 1.509 en 6 municipios. Es una concentración territorial extrema frente a
+Antioquia, que tiene 4.686 unidades repartidas en 94 municipios.
+
+### 4. El volumen se duplica desde 2015
+
+De 2.356 unidades en 2014 a 4.835 en 2016. El salto coincide con la
+intensificacion de las operaciones de destruccion de cultivos ilicitos,
+pero el dataset no permite separar el efecto de la politica del cambio en
+la capacidad de registro.
+
+---
+
+## Control de calidad del dato
+
+El script detecta y reporta anomalías en `COD_DEPTO`:
+
+| COD_DEPTO | DEPARTAMENTO | Unidades | Filas |
+|---|---|---:|---:|
+| 60401 | **PERU** | 79 | 11 |
+| — | SIN ESTABLECER | 26 | 1 |
+
+**`PERU` es un país, no un departamento colombiano.** El dataset mezcla
+registros internacionales en la columna de departamento.
+
+Total contaminado: **105 unidades (0,15 %)**.
+
+**Tratamiento aplicado:** se excluyen del ranking oficial mediante el filtro
+`cod_depto ~ '^[0-9]{2}$'`, que exige el formato DIVIPOLA de dos dígitos. Se
+dejan documentados en el reporte. Un ranking presentado sin mencionar esto sería
+defectuoso.
+
+---
+
+## Gráficos
+
+| Archivo | Qué muestra |
+|---|---|
+| `g1_top_departamentos.png` | La respuesta central (los 3 primeros destacados) |
+| `g2_participacion.png` | Participación porcentual por departamento |
+| `g3_serie_historica.png` | Destrucciones por año a nivel Colombia |
+| `g4_putumayo_vs_narino.png` | Los dos primeros comparados año a año |
+| `g5_top_municipios.png` | Concentración municipal |
+| `g6_intensidad_departamental.png` | Mapa de calor en forma de barras |
+
+---
+
+## Cómo ejecutar
+
+```bash
+pip install -r ../requirements.txt
+python3 drogas_deptos.py
+```
+
+**Salida:** `~/Escritorio/BIGDATA 3/fase1_drogas/` con `reporte_drogas.txt` y
+`graficos/`.
+
+---
+
+## Problemas encontrados
+
+### 1. `FECHA HECHO` es texto, no timestamp
+
+Viene como `"2026 Aug 31 12:00:00 AM"`. `F.year()` sobre un string devuelve
+`NULL`, y toda la serie histórica colapsaba en una sola fila.
+
+```python
+d = d.withColumn("fecha_dt", F.to_date(F.col("fecha"), "yyyy MMM dd hh:mm:ss a"))
+d = d.withColumn("anio",
+    F.when(F.col("fecha_dt").isNotNull(), F.year(F.col("fecha_dt")))
+     .otherwise(F.regexp_extract(F.col("fecha"), r"^(\d{4})", 1).cast("int")))
+```
+
+### 2. `DataFrame.pivot()` no existe en PySpark 3.5
+
+Solo existe `GroupedData.pivot()` y exige la lista explícita de valores. Se
+reemplazó por agregación condicional:
+
+```python
+# NO: .pivot("departamento", "u")
+# SI:
+.agg(F.sum(F.when(F.col("departamento") == "PUTUMAYO",
+                  F.col("cantidad")).otherwise(0)).alias("PUTUMAYO"),
+     F.sum(F.when(F.col("departamento") == "NARIÑO",
+                  F.col("cantidad")).otherwise(0)).alias("NARINO"))
+```
+
+### 3. Detección de procesos engañosa
+
+`pgrep -f Kafka` también coincide con `kafka_producer.py`, así que un broker
+caído pasaba por "ya está corriendo". Se corrigió a `pgrep -f 'kafka\.Kafka'`.
+No afecta este dataset, pero se menciona porque el mismo proyecto de la Tarea 3 incluye una parte de streaming.
